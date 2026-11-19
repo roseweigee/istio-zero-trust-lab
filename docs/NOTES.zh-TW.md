@@ -184,7 +184,21 @@ OpenShift Service Mesh 3 是以上游 Istio 為基礎，透過 Sail Operator 安
 | 拿到 `403 RBAC: access denied` | AuthorizationPolicy 擋下的；用 `istioctl x authz check deploy/payments-v1 -n bank` 看生效的規則 |
 | Mac 上 kind 建不起來 | 確認 Docker Desktop 已啟動，資源給夠 |
 
-## 6. 收尾
+## 6. 實測結果（GitHub Actions，Istio 1.29.0，kind）
+
+| 檢查 | 第 1 輪 | 第 2 輪（重跑） |
+|---|---|---|
+| kubeconform 嚴格驗證 18 個資源（含 Istio CRD schema） | 18/18 通過 | — |
+| Step 1–4 安全性檢查（共 9 項） | 全部通過 | 全部通過 |
+| header 路由 | 20/20 到 v2 | 20/20 到 v2 |
+| 90/10 分流，200 次請求 | 17 次到 v2 | 21 次到 v2 |
+| 全量 v2 | 50/50 | 50/50 |
+| 回滾 v1 | 0/50 到 v2 | 0/50 到 v2 |
+| 合計 | 14/14 | 14/14 |
+
+整個流程（建叢集、裝 Istio、部署、驗證兩輪）約 2 分鐘。
+
+## 7. 收尾
 
 ```bash
 bash scripts/teardown.sh
@@ -192,7 +206,7 @@ bash scripts/teardown.sh
 
 ---
 
-## 7. 面試可能被問到的問題
+## 8. 面試可能被問到的問題
 
 **Q1：為什麼需要 Service Mesh？不能在程式裡做就好嗎？**
 可以，但每個服務、每種語言都要各自實作 TLS、身分驗證、重試和流量分流，而且改一次要全部重新部署。Service Mesh 把這些橫切關注點下沉到 sidecar，應用只寫商業邏輯，政策用 YAML 統一管理。
