@@ -1,0 +1,24 @@
+# Step 5 – canary release.
+#  * testers who send the header  x-canary: "true"  always get v2
+#  * everybody else: 90 % v1, 10 % v2
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: payments
+  namespace: bank
+spec:
+  hosts: ["payments"]
+  http:
+    - name: canary-testers
+      match:
+        - headers:
+            x-canary:
+              exact: "true"
+      route:
+        - destination: {host: payments, subset: v2}
+    - name: weighted
+      route:
+        - destination: {host: payments, subset: v1}
+          weight: 90
+        - destination: {host: payments, subset: v2}
+          weight: 10

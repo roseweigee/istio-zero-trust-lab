@@ -1,0 +1,12 @@
+# Drill – roll back: 100 % of traffic to v1 in one apply, no redeploy.
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: payments
+  namespace: bank
+spec:
+  hosts: ["payments"]
+  http:
+    - route:
+        - destination: {host: payments, subset: v1}
+          weight: 100

@@ -1,0 +1,132 @@
+# payments v1 / v2  : the service we protect and canary-release
+# frontend          : the only caller that is allowed to reach payments
+# intruder          : another workload inside the mesh that must be refused
+# legacy-client     : plaintext client outside the mesh (namespace legacy)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: payments
+  namespace: bank
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: frontend
+  namespace: bank
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: intruder
+  namespace: bank
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-v1
+  namespace: bank
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: payments, version: v1}
+  template:
+    metadata:
+      labels: {app: payments, version: v1}
+    spec:
+      serviceAccountName: payments
+      containers:
+        - name: payments
+          image: hashicorp/http-echo:1.0
+          args: ["-text=payments v1", "-listen=:8080"]
+          ports:
+            - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-v2
+  namespace: bank
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: payments, version: v2}
+  template:
+    metadata:
+      labels: {app: payments, version: v2}
+    spec:
+      serviceAccountName: payments
+      containers:
+        - name: payments
+          image: hashicorp/http-echo:1.0
+          args: ["-text=payments v2", "-listen=:8080"]
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payments
+  namespace: bank
+spec:
+  selector:
+    app: payments          # matches BOTH v1 and v2 – Istio decides the split
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: bank
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: frontend}
+  template:
+    metadata:
+      labels: {app: frontend}
+    spec:
+      serviceAccountName: frontend
+      containers:
+        - name: curl
+          image: curlimages/curl:8.10.1
+          command: ["sleep", "infinity"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: intruder
+  namespace: bank
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: intruder}
+  template:
+    metadata:
+      labels: {app: intruder}
+    spec:
+      serviceAccountName: intruder
+      containers:
+        - name: curl
+          image: curlimages/curl:8.10.1
+          command: ["sleep", "infinity"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: legacy-client
+  namespace: legacy
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: legacy-client}
+  template:
+    metadata:
+      labels: {app: legacy-client}
+    spec:
+      containers:
+        - name: curl
+          image: curlimages/curl:8.10.1
+          command: ["sleep", "infinity"]

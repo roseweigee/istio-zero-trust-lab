@@ -1,0 +1,22 @@
+# Step 4 – least privilege.
+# Only the frontend ServiceAccount may call payments, only with GET, only on /api/*.
+# The identity (principal) comes from the mTLS certificate (SPIFFE ID),
+# so it cannot be faked by setting a header or copying an IP address.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: payments-allow-frontend
+  namespace: bank
+spec:
+  selector:
+    matchLabels:
+      app: payments
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals: ["cluster.local/ns/bank/sa/frontend"]
+      to:
+        - operation:
+            methods: ["GET"]
+            paths: ["/api/*"]

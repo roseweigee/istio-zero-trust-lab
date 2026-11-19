@@ -1,0 +1,13 @@
+# bank   : workloads inside the mesh (Envoy sidecar injected automatically)
+# legacy : a workload outside the mesh (no sidecar) – plays the "old system"
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bank
+  labels:
+    istio-injection: enabled
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: legacy

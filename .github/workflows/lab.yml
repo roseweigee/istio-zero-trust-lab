@@ -1,0 +1,51 @@
+name: lab
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  ISTIO_VERSION: "1.29.0"
+
+jobs:
+  istio-on-kind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint manifests (kubeconform, strict, Istio CRD schemas)
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz
+          ./kubeconform -strict -summary -ignore-missing-schemas \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            manifests/
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: istio-lab
+
+      - name: Install istioctl
+        run: |
+          curl -sL https://istio.io/downloadIstio | ISTIO_VERSION="$ISTIO_VERSION" TARGET_ARCH=x86_64 sh -
+          echo "$PWD/istio-$ISTIO_VERSION/bin" >> "$GITHUB_PATH"
+
+      - name: Setup (Istio + apps)
+        run: bash scripts/setup.sh
+
+      - name: Verify every lab step
+        run: bash scripts/verify.sh
+
+      - name: Re-run verify (idempotent reset)
+        run: bash scripts/verify.sh
+
+      - name: Debug on failure
+        if: failure()
+        run: |
+          kubectl get pods -A -o wide
+          kubectl get peerauthentication,authorizationpolicy,virtualservice,destinationrule -n bank -o yaml
+          istioctl analyze -A || true
+          kubectl logs -n bank deploy/payments-v1 -c istio-proxy --tail=50 || true

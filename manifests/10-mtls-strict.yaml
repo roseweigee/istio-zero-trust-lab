@@ -1,0 +1,11 @@
+# Step 2 – zero trust on the wire.
+# STRICT: every workload in namespace bank only accepts mutual-TLS traffic.
+# Plaintext callers outside the mesh (legacy-client) are rejected.
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: bank
+spec:
+  mtls:
+    mode: STRICT

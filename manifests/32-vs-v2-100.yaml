@@ -1,0 +1,12 @@
+# Step 6 – promote: 100 % of traffic to v2.
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: payments
+  namespace: bank
+spec:
+  hosts: ["payments"]
+  http:
+    - route:
+        - destination: {host: payments, subset: v2}
+          weight: 100

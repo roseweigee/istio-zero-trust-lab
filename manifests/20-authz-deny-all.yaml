@@ -1,0 +1,9 @@
+# Step 3 – default deny.
+# An AuthorizationPolicy with an empty spec matches every workload in the
+# namespace and allows nothing, so all requests get "403 RBAC: access denied".
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: deny-all
+  namespace: bank
+spec: {}
